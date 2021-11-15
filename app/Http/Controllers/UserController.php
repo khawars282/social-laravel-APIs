@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Validator;
 use Firebase\JWT\JWT;
 use Firebase\JWT\key;
 use App\Models\Token;
-
+use App\Mail\ConfirmEmail;
+use Illuminate\Support\Facades\Mail;
 class UserController extends Controller
 {
     public function register(Request $req)
@@ -34,12 +35,22 @@ class UserController extends Controller
             'email' => $req->email,
             'password' => $req->password
         ]);
+        $url =url('api/EmailConfirmation/'.$req['email']);
+        Mail::to($req->email)->send(new ConfirmEmail($url,'khawars282@gmail.com'));
         //User created, return success response
         return response()->json([
             'success' => true,
             'message' => 'User created successfully',
             'data' => $user
         ], Response::HTTP_OK);
+    }
+    // confirmEmail email_verified_at genrate / save
+    public function confirmEmail($email){
+        $user= User::where('email', $email)->first();
+        $user->email_verified_at =$user->email_verified_at =time();
+        $user->save();
+           dd($user);
+           return $user;
     }
 
     //create Token
@@ -76,6 +87,7 @@ class UserController extends Controller
 
     public function authenticate(Request $request)
     {
+
         $credentials = $request->only('email', 'password');
 
         //valid credential
@@ -88,21 +100,31 @@ class UserController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }else{
-            echo "login is scusse";
+            //echo "login is scusse";
             $user= User::where('email', $request->email)->first();
-            $t= Token::where('token', $request->token)->first();
-
             // dd($user->id);
-            $token = $this->createToken($user->id);
-            $tokenData = Token::create([
-                'token' => $token,
-                'user_id' => $user->id
-            ]);
 
-            $response = [
-                'user' => $user,
-                'token' => $token,
-            ];
+            $tokeexit = Token::where('user_id',$user->id)->first();
+            // dd($tokeexit->user_id);
+            if(!$tokeexit)
+            {
+                // dd($user->id);
+                $token = $this->createToken($user->id);
+                $tokenData = Token::create([
+                    'token' => $token,
+                    'user_id' => $user->id
+                ]);
+
+                $response = [
+                    'user' => $user,
+                    'token' => $token,
+                ];
+            }else{
+                $response = [
+                    'user' => $user,
+                    'token' => "you already login",
+                ];
+            }
         
              return response($response, 201);
         }

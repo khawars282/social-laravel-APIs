@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class post extends Model
+class ReceivedFriendRequests extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'title',
-        'description',
         'user_id',
+        'sender_id',
+        'status'
     ];
 }
