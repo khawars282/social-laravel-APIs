@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use MongoDB\Client as test; 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -24,17 +25,25 @@ class UserController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:6|max:12'
         ]);
+        
 
         //Send failed response if request is not valid
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }
         //Request is valid, create new user
-        $user = User::create([
-            'name' => $req->name,
-            'email' => $req->email,
-            'password' => $req->password
-        ]);
+        $collection = (new test())->social_app->users;
+            $user = $collection->insertOne([            
+            'name' => $req->name,           
+            'email' => $req->email,            
+            'password' => $req->password,   ]); 
+            // dd($user);
+        // //Request is valid, create new user
+        // $user = User::create([
+        //     'name' => $req->name,
+        //     'email' => $req->email,
+        //     'password' => $req->password
+        // ]);
         $url =url('api/EmailConfirmation/'.$req['email']);
         Mail::to($req->email)->send(new ConfirmEmail($url,'khawars282@gmail.com'));
         //User created, return success response
@@ -46,11 +55,52 @@ class UserController extends Controller
     }
     // confirmEmail email_verified_at genrate / save
     public function confirmEmail($email){
-        $user= User::where('email', $email)->first();
-        $user->email_verified_at =$user->email_verified_at =time();
-        $user->save();
-           dd($user);
-           return $user;
+        $collection = (new test())->social_app->users;
+        $user= $collection->findOne(['email' => $email]);
+        
+        // $user= User::where('email', $email)->first();
+        // $user->email_verified_at =$user->email_verified_at =time();
+        // dd($user);
+        // save({$user});
+        // $collection->updateOne(
+        //     ['email' => $email],
+        //     ['$set' => ['email_verified_at' => date('Y-m-d h:i:s')]
+        //     ]);
+            $email_verified_at = '';
+
+            if($email_verified_at != null){
+
+                return response([
+
+                'message'=>'Already Verified'
+
+            ]);
+
+            }elseif ($user) {
+
+                $collection->updateOne(
+
+                ['email' => $email],
+
+                ['$set' => ['email_verified_at' => date('Y-m-d h:i:s')]
+
+            ]);
+
+            return response([
+
+            'message'=>'Eamil Verified',
+            'user'=>$user
+
+            ]);
+
+            }else{
+
+            return response([
+
+            'message'=>'Error'
+            ]);
+            }
+
     }
 
     //create Token
@@ -87,6 +137,7 @@ class UserController extends Controller
 
     public function authenticate(Request $request)
     {
+        $collection = (new test())->social_app->users;
 
         $credentials = $request->only('email', 'password');
 
@@ -95,25 +146,31 @@ class UserController extends Controller
             'email' => 'required|email',
             'password' => 'required|string|min:6|max:12'
         ]);
-
+// dd($credentials);
         //Send failed response if request is not valid
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }else{
             //echo "login is scusse";
-            $user= User::where('email', $request->email)->first();
-            // dd($user->id);
-
-            $tokeexit = Token::where('user_id',$user->id)->first();
-            // dd($tokeexit->user_id);
-            if(!$tokeexit)
+            $user= $collection->findOne(['email' => $request->email]);
+       
+            if($user)
             {
                 // dd($user->id);
-                $token = $this->createToken($user->id);
-                $tokenData = Token::create([
-                    'token' => $token,
-                    'user_id' => $user->id
+                $token = $this->createToken($user);
+
+                $collection->updateOne(
+
+                    ['email' => $request->email],
+    
+                    ['$set' => ['token' => $token],
+    
                 ]);
+            
+                // $tokenData = Token::create([
+                //     'token' => $token,
+                //     'user_id' => $user->id
+                // ]);
 
                 $response = [
                     'user' => $user,
@@ -121,7 +178,7 @@ class UserController extends Controller
                 ];
             }else{
                 $response = [
-                    'user' => $user,
+                    // 'user' => $user,
                     'token' => "you already login",
                 ];
             }
@@ -133,7 +190,7 @@ class UserController extends Controller
 
     function logout(Request $request)
     {
-
+        
         //Decode Token
         
         $jwt = $request->bearerToken();
@@ -142,16 +199,31 @@ class UserController extends Controller
         
         $decoded = JWT::decode($jwt, new Key($key, 'HS256'));
         
-        $userID = $decoded->data;
         
+        $user = $decoded->data;
+        $collection = (new test())->social_app->users;
         //Check If Token Exits
+        $user_id= $collection->findOne(['email' => $user->email]);
         
-        $userExist = Token::where("user_id",$userID)->first();
+        $userExist= $collection->findOne([
+                '_id' => $user_id->_id,
+            ]);
+        // dd($userExist->token);
+        // $userExist = Token::where("user_id",$userID)->first();
         
-        if($userExist){
+        if(isset($userExist)){
         
-            $userExist->delete();
+            // $userExist->delete();
+            // $collection->deleteOne(['token' => $userExist->token]);;
+            $collection->updateOne(
+
+                ['email' => $userExist->email],
+
+                ['$unset' => ['token' => ''],
+
+            ]);
         
+            
         }else{
         
             return response([
@@ -162,11 +234,7 @@ class UserController extends Controller
             
         }
         
-            return response([
-            
-            "message" => "logout successfull"
-            
-            ], 200);
+
         
         }
     public function get_user(Request $request)

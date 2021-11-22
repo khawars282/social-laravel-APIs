@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use MongoDB\Client as test;
 use App\Models\User;
 use App\Models\Token;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class PostController extends Controller
         }
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         
-        $userId = $decoded->data;
+        $user = $decoded->data;
         
         $data = $request->only('title', 'description');
         $validator = Validator::make($data, [
@@ -37,12 +38,20 @@ class PostController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }
-
+        // dd($user);
+        $currentUser =(new test())->social_app->users;
+        $user_id= $currentUser->findOne(['email' => $user->email]);
+        
+        $userExist= $currentUser->findOne([
+                '_id' => $user_id->_id,
+            ]);
+            // dd($userExist);
+            $collection =(new test())->social_app->posts;
         //Request is valid, create new post   
-        $post = Post::create([
+        $post = $collection->insertOne([
             'title' => $request->title,
             'description' => $request->description,
-             'user_id' => $userId
+             'user' => (string)$userExist['_id'],
         ]);
 
         //Post created, return success response
@@ -55,6 +64,7 @@ class PostController extends Controller
 
     public function show(Request $request , $id)
     {
+        // dd('khawar');
         $token = $request->bearerToken();
         if (!isset($token)) {
             return response([
@@ -63,10 +73,27 @@ class PostController extends Controller
         }
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         
-        $userId = $decoded->data;
+        $user = $decoded->data;
         
+        // dd($my);
         //find post
-        $post = Post::where('user_id' , $userId)->where('id', $id)->first();
+        $currentUser =(new test())->social_app->users;
+        $user_id= $currentUser->findOne(['email' => $user->email]);
+        $collection =(new test())->social_app->posts;
+        
+        $userExist= $currentUser->findOne([
+                '_id' => $user_id->_id,
+            ]);
+        //Request is valid, create new post 
+        $pid =new \MongoDB\BSON\ObjectId($request->id);
+        // $uid =new \MongoDB\BSON\ObjectId($userExist);
+        $post = $collection->findOne([
+            
+            '_id'=> $pid,
+            'user' => (string)$userExist['_id'],
+        ]);
+        
+        // $post = Post::where('user_id' , $userId)->where('id', $id)->first();
 
         //check post
         if (!$post) {
@@ -89,7 +116,7 @@ class PostController extends Controller
         }
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         
-        $userId = $decoded->data;
+        $user = $decoded->data;
 
         //Validate data
         $data = $request->only('title', 'description');
@@ -105,14 +132,29 @@ class PostController extends Controller
         }
 
         //find post by title
-        $post = Post::where('user_id' , $userId)->where('title', $title)->first();
-
-        //Request is valid, update post
-        $post = Post::update([
-            'title' => $request->title,
-            'description' => $request->description
+        $currentUser =(new test())->social_app->users;
+        $user_id= $currentUser->findOne(['email' => $user->email]);
+        $userExist= $currentUser->findOne([
+                '_id' => $user_id->_id,
+            ]);
+            // dd($userExist);
+            $collection =(new test())->social_app->posts;
+        //Request is valid, create new post   
+        $post = $collection->findOne([
+             'user' => (string)$userExist['_id'],
+             'title' => $request->title,
         ]);
+        // $post = Post::where('user_id' , $userId)->where('title', $title)->first();
+        // dd($post);
+        //Request is valid, update post
+        $post = $collection->updateOne(
 
+            ['title' => $request->title],
+
+            ['$set' => ['description' => $request->description],
+
+        ]);
+     
         //Post updated, return success response
         return response()->json([
             'success' => true,
@@ -124,6 +166,7 @@ class PostController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        // dd('jnjb');
         $token = $request->bearerToken();
         if (!isset($token)) {
             return response([
@@ -133,14 +176,29 @@ class PostController extends Controller
         
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         
-        $userId = $decoded->data;
+        $user = $decoded->data;
 
-        //find post by id
-        $post = Post::where('user_id' , $userId)->where('id', $id)->first();
-        
-        //delete post
-        $post->delete();
-        
+        // //find post by id
+        // dd($userId);
+        $usercol = (new test())->social_app->users;
+        //Check If Token Exits
+        // $user_id= $usercol->findOne(['email' => $user->email]);
+        $postExist= $usercol->findOne([
+           'user' => $user,
+        ]);
+        // dd($user);
+        $collection = (new test())->social_app->posts;
+        $pid =new \MongoDB\BSON\ObjectId($request->id);
+        $postExist= $collection->findOne([
+                '_id' => $pid,
+            ]);
+            // dd($postExist);
+            $collection->deleteOne(
+
+                ['_id' => $pid],
+
+               );
+               
         return response()->json([
             'success' => true,
             'message' => 'Post deleted successfully'

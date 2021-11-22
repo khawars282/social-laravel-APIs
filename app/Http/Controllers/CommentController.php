@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Models\User;
+use MongoDB\Client as test;
 use App\Models\Comment;
 use App\Models\Token;
 use App\Models\ReceivedFriendRequest;
@@ -35,37 +36,40 @@ class CommentController extends Controller
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
 
         //Get Id
-        $userId = $decoded->data;
-
-        //Get friends of this user
-        $sentRequests = SentFriendRequest::all()->where('user_id', $userId)->where('status', true)->pluck('receiver_id')->toArray();
-        $recievedRequests = ReceivedFriendRequest::all()->where('user_id', $userId)->where('status', true)->pluck('sender_id')->toArray();
-
-        $getPost = Post::find($id);
-
-        //user_id of author of this post
-        $author = $getPost->user_id;
-
-        //Get user
-        $user = User::where('id', $author)->first();
-
+        $user = $decoded->data;
+        // dd($user);
+        $currentUser =(new test())->social_app->users;
+        $user_id= $currentUser->findOne(['email' => $user->email]);
         
-        if (in_array($author, $sentRequests) || in_array($author, $recievedRequests) || $author == $userId || $getPost->privacy == false) {
+            // dd($userExist);
+            $collection =(new test())->social_app->posts;
 
-            $commentCreated =  Comment::create([
-                'user_id' => $userId,
-                'post_id' => $id,
-                'content' => $request->content,
+            $pid =new \MongoDB\BSON\ObjectId($request->id);
+            $postExist= $collection->findOne([
+                '_id' => $pid,
             ]);
+            $author = $postExist->user;
+            $uid =new \MongoDB\BSON\ObjectId($author);
+            $userExist= $currentUser->findOne([
+                '_id' => $uid,
+            ]);
+            
+        //Request is valid, create new post   
+        $comment = $collection->updateOne(['_id' => new \MongoDB\BSON\ObjectId($id)],
+        [
+            '$set' => [
+            'comments'=>[
+            'comment' => $request->title,
+            'userid' => (string)$userExist['_id'],
+            'postid' => $id,
+            ]
+            ]
+        ]);
+             return response([
+                'message' => 'You are comment on this post',
+                'comment' => $comment
+            ], 200);
 
-            $user->notify(new CommentOnYourPost($commentCreated));
-
-            return $commentCreated;
-        } else {
-            return response([
-                'message' => 'You are not allowed to comment on this post'
-            ], 404);
-        }
     }
 
 
@@ -75,16 +79,8 @@ class CommentController extends Controller
     public function update(Request $request, $id)
     {
         //Get Bearer Token
+        // dd('sajjs');
         $token = $request->bearerToken();
-
-        //Get comment
-        $getComment = Comment::find($id);
-
-        if (!$getComment) {
-            return response([
-                'message' => 'Comment does not exist'
-            ]);
-        }
 
         if (!isset($token)) {
             return response([
@@ -92,7 +88,7 @@ class CommentController extends Controller
             ]);
         }
 
-        if ($request->content == null) {
+        if ($request->comment == null) {
             return response([
                 'message' => 'content is required'
             ]);
@@ -102,52 +98,31 @@ class CommentController extends Controller
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
 
         //Get Id
-        $userId = $decoded->data;
+        $user = $decoded->data;
 
         //Get friends of this user
-        $sentRequests = SentFriendRequest::all()->where('user_id', $userId)->where('status', true)->pluck('receiver_id')->toArray();
-        $recievedRequests = ReceivedFriendRequest::all()->where('user_id', $userId)->where('status', true)->pluck('sender_id')->toArray();
-
         //Get Post id
-        $postId = $getComment->post_id;
-        $getPost = Post::find($postId);
+        $currentUser =(new test())->social_app->users;
+        $user_id= $currentUser->findOne(['email' => $user->email]);
+        
+            // dd($userExist);
+            $collection =(new test())->social_app->posts;
 
-        //user_id of author of this post
-        $author = $getPost->user_id;
-
-        //user_id of commenter
-        $commenter = $getComment->user_id;
-
-        /*
-            If author of the posts is
-            > User's friend
-            > User is the author of the post
-            > Post is public
-            allow user to delete comment otherwise return unauthorized response
-        */
-
-
-        if ((in_array($author, $sentRequests) || in_array($author, $recievedRequests) || $author == $userId || $getPost->privacy == false) && $commenter == $userId) {
-
-            $comment = Comment::where('id', $id)->where('user_id', $userId)->first();
-
-            if ($comment) {
-                $comment->content = $request->content;
-                $comment->update();
-
-                return $comment;
-            } else {
-                return response([
-                    'message' => 'Something went wrong'
-                ], 404);
-            }
-        } else {
-            return response([
-                'message' => 'You are not allowed to update this comment'
-            ], 404);
-        }
+            $pid =new \MongoDB\BSON\ObjectId($request->id);
+            $postExist= $collection->findOne([
+                '_id' => $pid,
+            ]);
+        $updatedComment = $collection->findOneAndUpdate(
+            [ '_id' => $pid ],
+            [ '$set' => [ 'comments.comment' => $request->comment ]],
+            
+        );
+        return response([
+            'message' => 'You are comment on this post',
+            'comment' => $updatedComment
+        ], 200);
+        // dd($updatedComment);
     }
-
 
     /*
         Deletes comment by id
@@ -158,14 +133,6 @@ class CommentController extends Controller
         //Get Bearer Token
         $token = $request->bearerToken();
 
-        //Get comment
-        $getComment = Comment::find($id);
-
-        if (!$getComment) {
-            return response([
-                'message' => 'Comment does not exist'
-            ]);
-        }
 
         if (!isset($token)) {
             return response([
@@ -177,44 +144,36 @@ class CommentController extends Controller
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
 
         //Get Id
-        $userId = $decoded->data;
+        $user = $decoded->data;
+        $usercol = (new test())->social_app->users;
+        //Check If Token Exits
+        // $user_id= $usercol->findOne(['email' => $user->email]);
+        $postExist= $usercol->findOne([
+           'user' => $user,
+        ]);
+        // dd($user);
+        $collection = (new test())->social_app->posts;
+        $pid =new \MongoDB\BSON\ObjectId($request->id);
+        $postExist= $collection->findOne([
+                '_id' => $pid,
+            ]);
+            // dd($postExist);
+            // $coment = $collection->deleteOne(
 
-        //Get friends of this user
-        $sentRequests = SentFriendRequest::all()->where('user_id', $userId)->where('status', true)->pluck('receiver_id')->toArray();
-        $recievedRequests = ReceivedFriendRequest::all()->where('user_id', $userId)->where('status', true)->pluck('sender_id')->toArray();
+            //     ['_id' =>[ 'comments.comment' => $pid ] ],
 
-        //Get Post id
-        $postId = $getComment->post_id;
-        $getPost = Post::find($postId);
+            //    );
+               
+            $coment =$collection->deleteOne(array("_id" => $pid),
+                array('$unset' => array('comments.userid' => '')));
+                // $coment = $collection->updateOne(
 
-        //user_id of author of this post
-        $author = $getPost->user_id;
-
-        //user_id of commenter
-        $commenter = $getComment->user_id;
-
-        
-        if (in_array($author, $sentRequests) || in_array($author, $recievedRequests) || $author == $userId || $getPost->privacy == false && $commenter == $userId) {
-
-            $comment = Comment::where('id', $id)->where('user_id', $userId)->first();
-
-            if ($comment) {
-                $comment->delete();
-
-                return response([
-                    'message' => 'Comment deleted successfully',
-                    'comment' => $comment
-                ]);
-            } else {
-                return response([
-                    'message' => 'You are not allowed to comment on this post'
-                ], 404);
-            }
-        } else {
-            return response([
-                'message' => 'You are not allowed to comment on this post'
-            ], 404);
-        }
+                //     ['_id' => $pid],
+    
+                //     ['$unset' => ['comments.' => ''],
+    
+                // ]);
+               dd($coment);
     }
 
 
@@ -238,7 +197,28 @@ class CommentController extends Controller
         //Get Id
         $userId = $decoded->data;
 
-        $comments = Comment::where('user_id', $userId)->get();
+        $usercol = (new test())->social_app->users;
+        //Check If Token Exits
+        // $user_id= $usercol->findOne(['email' => $user->email]);
+        $postExist= $usercol->findOne([
+           'user' => $user,
+        ]);
+        // dd($user);
+        $collection = (new test())->social_app->posts;
+        $pid =new \MongoDB\BSON\ObjectId($request->id);
+        $postExist= $collection->findOne([
+                'comments.userid' => $pid,
+            ]);
+            // dd($postExist);
+            // $coment = $collection->deleteOne(
 
+            //     ['_id' =>[ 'comments.comment' => $pid ] ],
+
+            //    );
+               
+            $coment =$collection->find([
+                'comments.comment' => $pid,
+            ]);
+            dd($postExist);
         return $comments;
     }}

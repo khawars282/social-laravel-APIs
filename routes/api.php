@@ -18,14 +18,14 @@ Route::group(['middleware' => ['verification']], function() {
         Route::get('/get_user/{token}', [UserController::class, 'get_user']);
         //post
         Route::post('/create', [PostController::class, 'store']);
-        Route::put('/update/{id}',  [PostController::class, 'update']);
-        Route::delete('/delete/{id}',  [PostController::class, 'destroy']);
-        Route::get('/posts/{title}', [PostController::class, 'show']);
+        Route::put('/update/{title}',  [PostController::class, 'update']);
+        Route::delete('/deletePost/{id}',  [PostController::class, 'destroy']);
+        Route::get('/posts/{id}', [PostController::class, 'show']);
         //comment
         Route::get('/showcomment', [CommentController::class, 'showComments']);
         Route::post('/post/{id}/createComment', [CommentController::class, 'create']);
-        Route::put('/updateComment/{id}',  [CommentController::class, 'update']);
-        Route::delete('/deleteComment/{id}',  [CommentController::class, 'delete']);
+        Route::put('/post/{id}/updateComment',  [CommentController::class, 'update']);
+        Route::delete('/post/{id}/deleteComment',  [CommentController::class, 'delete']);
         //frind
         Route::post('/sendRequest/{id}', [FriendController::class, 'sendRequest']);
         Route::get('/showRequests', [FriendController::class, 'showRequests']);
