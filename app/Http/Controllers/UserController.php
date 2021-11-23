@@ -208,13 +208,9 @@ class UserController extends Controller
         $userExist= $collection->findOne([
                 '_id' => $user_id->_id,
             ]);
-        // dd($userExist->token);
-        // $userExist = Token::where("user_id",$userID)->first();
         
         if(isset($userExist)){
         
-            // $userExist->delete();
-            // $collection->deleteOne(['token' => $userExist->token]);;
             $collection->updateOne(
 
                 ['email' => $userExist->email],

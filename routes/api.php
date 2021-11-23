@@ -22,7 +22,7 @@ Route::group(['middleware' => ['verification']], function() {
         Route::delete('/deletePost/{id}',  [PostController::class, 'destroy']);
         Route::get('/posts/{id}', [PostController::class, 'show']);
         //comment
-        Route::get('/showcomment', [CommentController::class, 'showComments']);
+        Route::get('/post/{id}/showComment', [CommentController::class, 'showComments']);
         Route::post('/post/{id}/createComment', [CommentController::class, 'create']);
         Route::put('/post/{id}/updateComment',  [CommentController::class, 'update']);
         Route::delete('/post/{id}/deleteComment',  [CommentController::class, 'delete']);

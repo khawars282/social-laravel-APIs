@@ -86,15 +86,12 @@ class PostController extends Controller
             ]);
         //Request is valid, create new post 
         $pid =new \MongoDB\BSON\ObjectId($request->id);
-        // $uid =new \MongoDB\BSON\ObjectId($userExist);
         $post = $collection->findOne([
             
             '_id'=> $pid,
             'user' => (string)$userExist['_id'],
         ]);
         
-        // $post = Post::where('user_id' , $userId)->where('id', $id)->first();
-
         //check post
         if (!$post) {
             return response()->json([
@@ -144,8 +141,6 @@ class PostController extends Controller
              'user' => (string)$userExist['_id'],
              'title' => $request->title,
         ]);
-        // $post = Post::where('user_id' , $userId)->where('title', $title)->first();
-        // dd($post);
         //Request is valid, update post
         $post = $collection->updateOne(
 
@@ -179,10 +174,8 @@ class PostController extends Controller
         $user = $decoded->data;
 
         // //find post by id
-        // dd($userId);
         $usercol = (new test())->social_app->users;
         //Check If Token Exits
-        // $user_id= $usercol->findOne(['email' => $user->email]);
         $postExist= $usercol->findOne([
            'user' => $user,
         ]);

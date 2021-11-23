@@ -147,40 +147,38 @@ class CommentController extends Controller
         $user = $decoded->data;
         $usercol = (new test())->social_app->users;
         //Check If Token Exits
-        // $user_id= $usercol->findOne(['email' => $user->email]);
-        $postExist= $usercol->findOne([
-           'user' => $user,
-        ]);
-        // dd($user);
+        $user_id= $usercol->findOne(['email' => $user->email]);
         $collection = (new test())->social_app->posts;
+        $userExist= $collection->findOne([
+           'user' => (string)$user_id['_id'],
+        ]);
+        // dd($userExist);
+        
         $pid =new \MongoDB\BSON\ObjectId($request->id);
+        
+             $comment = $collection->updateOne(['_id' => new \MongoDB\BSON\ObjectId($id)],
+            [
+            '$unset' => [
+            'comments'=>[
+            'comment' => '',
+            ]
+            ]
+        ]);
         $postExist= $collection->findOne([
-                '_id' => $pid,
-            ]);
-            // dd($postExist);
-            // $coment = $collection->deleteOne(
-
-            //     ['_id' =>[ 'comments.comment' => $pid ] ],
-
-            //    );
-               
-            $coment =$collection->deleteOne(array("_id" => $pid),
-                array('$unset' => array('comments.userid' => '')));
-                // $coment = $collection->updateOne(
-
-                //     ['_id' => $pid],
-    
-                //     ['$unset' => ['comments.' => ''],
-    
-                // ]);
-               dd($coment);
+            '_id' => $pid,
+        ]);
+        return response([
+            'message' => 'You are comment delete on this post',
+            'comment' => $postExist
+        ], 200);
+            //    dd($postExist);
     }
 
 
     /*
         Returns user's comments
     */
-    public function showComments(Request $request)
+    public function showComments(Request $request,$id)
     {
         //Get Bearer Token
         $token = $request->bearerToken();
@@ -195,30 +193,32 @@ class CommentController extends Controller
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
 
         //Get Id
-        $userId = $decoded->data;
-
+        $user = $decoded->data;
+        // dd($user);
         $usercol = (new test())->social_app->users;
         //Check If Token Exits
-        // $user_id= $usercol->findOne(['email' => $user->email]);
-        $postExist= $usercol->findOne([
-           'user' => $user,
+        $user_id= $usercol->findOne(['email' => $user->email]);
+        $userExist= $usercol->findOne([
+            '_id' => $user_id->_id,
         ]);
-        // dd($user);
         $collection = (new test())->social_app->posts;
+        $postUser= $collection->findOne([
+            'user' => (string)$userExist['_id'],
+        ]);
         $pid =new \MongoDB\BSON\ObjectId($request->id);
-        $postExist= $collection->findOne([
-                'comments.userid' => $pid,
+        // dd($postUser);
+        $postExist =$collection->find([
+            '_id' => $pid,
+        ]);
+        
+        
+        $comments= $collection->findOne([
+                'comments.postid' => $id,
             ]);
-            // dd($postExist);
-            // $coment = $collection->deleteOne(
-
-            //     ['_id' =>[ 'comments.comment' => $pid ] ],
-
-            //    );
-               
-            $coment =$collection->find([
-                'comments.comment' => $pid,
-            ]);
-            dd($postExist);
-        return $comments;
+        return response([
+                'message' => 'All comment  on this post',
+                'comment' => $comments
+            ], 200);
+            
+        // return $comments;
     }}
