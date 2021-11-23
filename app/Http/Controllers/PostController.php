@@ -34,20 +34,16 @@ class PostController extends Controller
             'description' => 'required'
         ]);
 
-        //Send failed response if request is not valid
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }
-        // dd($user);
         $currentUser =(new test())->social_app->users;
         $user_id= $currentUser->findOne(['email' => $user->email]);
         
         $userExist= $currentUser->findOne([
                 '_id' => $user_id->_id,
             ]);
-            // dd($userExist);
             $collection =(new test())->social_app->posts;
-        //Request is valid, create new post   
         $post = $collection->insertOne([
             'title' => $request->title,
             'description' => $request->description,
@@ -64,7 +60,6 @@ class PostController extends Controller
 
     public function show(Request $request , $id)
     {
-        // dd('khawar');
         $token = $request->bearerToken();
         if (!isset($token)) {
             return response([
@@ -75,8 +70,7 @@ class PostController extends Controller
         
         $user = $decoded->data;
         
-        // dd($my);
-        //find post
+        
         $currentUser =(new test())->social_app->users;
         $user_id= $currentUser->findOne(['email' => $user->email]);
         $collection =(new test())->social_app->posts;
@@ -84,7 +78,6 @@ class PostController extends Controller
         $userExist= $currentUser->findOne([
                 '_id' => $user_id->_id,
             ]);
-        //Request is valid, create new post 
         $pid =new \MongoDB\BSON\ObjectId($request->id);
         $post = $collection->findOne([
             
@@ -92,7 +85,6 @@ class PostController extends Controller
             'user' => (string)$userExist['_id'],
         ]);
         
-        //check post
         if (!$post) {
             return response()->json([
                 'success' => false,
@@ -123,12 +115,12 @@ class PostController extends Controller
             
         ]);
 
-        //Send failed response if request is not valid
+        
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }
 
-        //find post by title
+        
         $currentUser =(new test())->social_app->users;
         $user_id= $currentUser->findOne(['email' => $user->email]);
         $userExist= $currentUser->findOne([
@@ -136,12 +128,10 @@ class PostController extends Controller
             ]);
             // dd($userExist);
             $collection =(new test())->social_app->posts;
-        //Request is valid, create new post   
         $post = $collection->findOne([
              'user' => (string)$userExist['_id'],
              'title' => $request->title,
         ]);
-        //Request is valid, update post
         $post = $collection->updateOne(
 
             ['title' => $request->title],
@@ -150,7 +140,6 @@ class PostController extends Controller
 
         ]);
      
-        //Post updated, return success response
         return response()->json([
             'success' => true,
             'message' => 'Post updated successfully',
@@ -159,9 +148,8 @@ class PostController extends Controller
     }
 
 
-    public function destroy(Request $request, $id)
+    public function delete(Request $request, $id)
     {
-        // dd('jnjb');
         $token = $request->bearerToken();
         if (!isset($token)) {
             return response([
@@ -173,19 +161,15 @@ class PostController extends Controller
         
         $user = $decoded->data;
 
-        // //find post by id
         $usercol = (new test())->social_app->users;
-        //Check If Token Exits
         $postExist= $usercol->findOne([
            'user' => $user,
         ]);
-        // dd($user);
         $collection = (new test())->social_app->posts;
         $pid =new \MongoDB\BSON\ObjectId($request->id);
         $postExist= $collection->findOne([
                 '_id' => $pid,
             ]);
-            // dd($postExist);
             $collection->deleteOne(
 
                 ['_id' => $pid],

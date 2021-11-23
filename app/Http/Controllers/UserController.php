@@ -31,19 +31,12 @@ class UserController extends Controller
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }
-        //Request is valid, create new user
+        //Request create new user
         $collection = (new test())->social_app->users;
             $user = $collection->insertOne([            
             'name' => $req->name,           
             'email' => $req->email,            
             'password' => $req->password,   ]); 
-            // dd($user);
-        // //Request is valid, create new user
-        // $user = User::create([
-        //     'name' => $req->name,
-        //     'email' => $req->email,
-        //     'password' => $req->password
-        // ]);
         $url =url('api/EmailConfirmation/'.$req['email']);
         Mail::to($req->email)->send(new ConfirmEmail($url,'khawars282@gmail.com'));
         //User created, return success response
@@ -53,19 +46,9 @@ class UserController extends Controller
             'data' => $user
         ], Response::HTTP_OK);
     }
-    // confirmEmail email_verified_at genrate / save
     public function confirmEmail($email){
         $collection = (new test())->social_app->users;
         $user= $collection->findOne(['email' => $email]);
-        
-        // $user= User::where('email', $email)->first();
-        // $user->email_verified_at =$user->email_verified_at =time();
-        // dd($user);
-        // save({$user});
-        // $collection->updateOne(
-        //     ['email' => $email],
-        //     ['$set' => ['email_verified_at' => date('Y-m-d h:i:s')]
-        //     ]);
             $email_verified_at = '';
 
             if($email_verified_at != null){
@@ -128,8 +111,7 @@ class UserController extends Controller
         return $jwt;
         
  	
- 		// Token created, return with success response and jwt token
-        return response()->json([
+ 		return response()->json([
             'success' => true,
             'token' => $jwt,
         ]);    
@@ -141,22 +123,17 @@ class UserController extends Controller
 
         $credentials = $request->only('email', 'password');
 
-        //valid credential
         $validator = Validator::make($credentials, [
             'email' => 'required|email',
             'password' => 'required|string|min:6|max:12'
         ]);
-// dd($credentials);
-        //Send failed response if request is not valid
         if ($validator->fails()) {
             return response()->json(['error' => $validator->messages()], 200);
         }else{
-            //echo "login is scusse";
             $user= $collection->findOne(['email' => $request->email]);
        
             if($user)
             {
-                // dd($user->id);
                 $token = $this->createToken($user);
 
                 $collection->updateOne(
@@ -166,11 +143,6 @@ class UserController extends Controller
                     ['$set' => ['token' => $token],
     
                 ]);
-            
-                // $tokenData = Token::create([
-                //     'token' => $token,
-                //     'user_id' => $user->id
-                // ]);
 
                 $response = [
                     'user' => $user,
@@ -178,7 +150,6 @@ class UserController extends Controller
                 ];
             }else{
                 $response = [
-                    // 'user' => $user,
                     'token' => "you already login",
                 ];
             }
@@ -191,7 +162,6 @@ class UserController extends Controller
     function logout(Request $request)
     {
         
-        //Decode Token
         
         $jwt = $request->bearerToken();
         
@@ -202,7 +172,6 @@ class UserController extends Controller
         
         $user = $decoded->data;
         $collection = (new test())->social_app->users;
-        //Check If Token Exits
         $user_id= $collection->findOne(['email' => $user->email]);
         
         $userExist= $collection->findOne([
@@ -228,11 +197,9 @@ class UserController extends Controller
             
             ], 404);
             
+        }    
         }
         
-
-        
-        }
     public function get_user(Request $request)
     {
         $this->validate($request, [
@@ -241,7 +208,15 @@ class UserController extends Controller
  
         $user = JWTAuth::authenticate($request->token);
  
-        return response()->json(['user' => $user]);
+        $collection = (new test())->social_app->users;
+        
+        $user_id= $collection->findOne(['email' => $user->email]);
+        
+        $userExist= $collection->findOne([
+                '_id' => $user_id->_id,
+            ]);
+            dd($user_id);
+        return response()->json(['user' => $userExist]);
     }
 }
 

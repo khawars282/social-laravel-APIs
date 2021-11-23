@@ -15,27 +15,17 @@ Route::get('/EmailConfirmation/{email}', [UserController::class, 'confirmEmail']
 Route::group(['middleware' => ['verification']], function() {
 
         Route::get('/logout', [UserController::class, 'logout']);
-        Route::get('/get_user/{token}', [UserController::class, 'get_user']);
+        Route::get('/showUser', [UserController::class, 'get_user']);
         //post
         Route::post('/create', [PostController::class, 'store']);
         Route::put('/update/{title}',  [PostController::class, 'update']);
-        Route::delete('/deletePost/{id}',  [PostController::class, 'destroy']);
+        Route::delete('/deletePost/{id}',  [PostController::class, 'delete']);
         Route::get('/posts/{id}', [PostController::class, 'show']);
         //comment
         Route::get('/post/{id}/showComment', [CommentController::class, 'showComments']);
         Route::post('/post/{id}/createComment', [CommentController::class, 'create']);
         Route::put('/post/{id}/updateComment',  [CommentController::class, 'update']);
         Route::delete('/post/{id}/deleteComment',  [CommentController::class, 'delete']);
-        //frind
-        Route::post('/sendRequest/{id}', [FriendController::class, 'sendRequest']);
-        Route::get('/showRequests', [FriendController::class, 'showRequests']);
-        Route::get('/acceptRequest/{id}', [FriendController::class, 'acceptRequest']);
-        Route::get('/deleteRequest/{id}', [FriendController::class, 'deleteRequest']);
-        Route::get('/removeFriend/{id}', [FriendController::class, 'removeFriend']);
-        //profile
-        Route::get('/showprofile/{id}', [UserController::class, 'showProfile']);
-        Route::put('/update/{id}', [UserController::class, 'update']);
-        Route::delete('/delete/{id}', [UserController::class, 'delete']);
-        Route::post('/search/{name}', [UserController::class, 'search']);
+        
     });
     
