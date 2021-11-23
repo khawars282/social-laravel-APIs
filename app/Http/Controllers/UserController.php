@@ -117,7 +117,7 @@ class UserController extends Controller
         ]);    
     }
 
-    public function authenticate(Request $request)
+    public function login(Request $request)
     {
         $collection = (new test())->social_app->users;
 
