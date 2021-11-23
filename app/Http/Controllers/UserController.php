@@ -191,7 +191,7 @@ class UserController extends Controller
             
         }else{
         
-            return response([
+            return response()->json([
         
             "message" => "This user is already logged out"
             

@@ -9,13 +9,8 @@ use Illuminate\Http\Request;
 
 class ProfileController extends Controller
 {
-    /*
-        Returns user profile
-        parameter: user id
-    */
     public function showProfile(Request $request, $id)
     {
-        //Get Bearer Token
         $token = $request->bearerToken();
 
         if (!isset($token)) {
@@ -23,15 +18,19 @@ class ProfileController extends Controller
                 'message' => 'Bearer token not found'
             ]);
         }
-
-        //Decode
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
-        //Get Id
-        $userId = $decoded->data;
+        $user = $decoded->data;
+        $currentUser =(new test())->social_app->users;
+        $user_id= $currentUser->findOne(['email' => $user->email]);
+        $userExist= $currentUser->findOne([
+                '_id' => $user_id->_id,
+            ]);
+            $uid =new \MongoDB\BSON\ObjectId($request->id);
+        if ($userExist == $uid) {
 
-        if ($userId == $id) {
-
-            $getUser = User::find($id);
+            $getUser  =$collection->findOne([
+                '_id'=> $uid
+            ]);
 
             if (isset($getUser)) {
                 return $getUser;
@@ -42,93 +41,18 @@ class ProfileController extends Controller
             }
         } else {
             return response([
-                'message' => 'You are not authorized to perform this action'
+                'message' => 'You are not authorized'
             ], 401);
         }
     }
 
 
 
-    
-    //update user's data
-    
-    public function update(Request $request, $id)
-    {
-        //Get Bearer Token
-        $token = $request->bearerToken();
-
-        if (!isset($token)) {
-            return response([
-                'message' => 'Bearer token not found'
-            ]);
-        }
-
-        //Decode
-        $decoded = JWT::decode($token, new Key('Social', 'HS256'));
-        //Get Id
-        $userId = $decoded->data;
-
-
-        if ($userId == $id) {
-            $user = User::find($id);
-            $user->update($request->all());
-            $user->save();
-
-            return $user;
-        } else {
-            return response([
-                'message' => 'You are not authorized to perform this action'
-            ], 401);
-        }
-    }
-
-
-  
-    // delete user's data
-    
-    public function delete(Request $request, $id)
-    {
-        //Get Bearer Token
-        $token = $request->bearerToken();
-
-        if (!isset($token)) {
-            return response([
-                'message' => 'Bearer token not found'
-            ]);
-        }
-
-        //Decode
-        $decoded = JWT::decode($token, new Key('Social', 'HS256'));
-        //Get Id
-        $userId = $decoded->data;
-
-        if ($userId == $id) {
-            $getUser = User::destroy($id);
-
-            if ($getUser == 1) {
-                return response([
-                    'message' => 'User Deleted Succesfully'
-                ]);
-            } elseif ($getUser == 0) {
-                return response([
-                    'message' => 'Already deleted'
-                ]);
-            } else {
-                return response([
-                    'message' => 'Not user found'
-                ], 404);
-            }
-        } else {
-            return response([
-                'message' => 'You are not authorized '
-            ], 401);
-        }
-    }
-
-    //    search user's by name
     
     public function search($name)
     {
-        return User::where('name', 'like', '%' . $name . '%')->get();
+        $currentUser =(new test())->social_app->users;
+        $user= $currentUser->findOne(['name' => $name]);
+        return $user;
     }
 }
