@@ -2,12 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Post;
-use App\Models\User;
-use App\Models\Token;
+
 use MongoDB\Client as test;
-use App\Models\ReceivedFriendRequest;
-use App\Models\SentFriendRequest;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
@@ -30,6 +26,7 @@ class FriendController extends Controller
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         //Get data
         $user = $decoded->data;
+        try{
         $currentUser =(new test())->social_app->users;
         $user_id= $currentUser->findOne(['email' => $user->email]);
         
@@ -45,7 +42,7 @@ class FriendController extends Controller
         if ($user_id->_id == $uid) {
             
             return response([
-                'message' => 'You can not send request to yourself'
+                'message' => 'You not send request to yourself'
             ]);
         }
         
@@ -102,11 +99,14 @@ class FriendController extends Controller
             ]);
         }
     }
+    catch (Throwable $ex) {
+        report($ex);
+        return false;
+    }
+    }
 
+    //    Function show requests 
 
-    /*
-        Function to show requests of the user
-    */
     public function showRequests(Request $request)
     {
         //Get Bearer Token
@@ -122,6 +122,7 @@ class FriendController extends Controller
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         //Get data
         $user = $decoded->data;
+        try{
         $currentUser =(new test())->social_app->users;
         $user_id= $currentUser->findOne(['email' => $user->email]);
         
@@ -143,6 +144,11 @@ class FriendController extends Controller
             ]);
         }
     }
+    catch (Throwable $ex) {
+        report($ex);
+        return false;
+    }
+    }
 
 
     public function acceptRequest(Request $request, $id)
@@ -160,6 +166,7 @@ class FriendController extends Controller
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         //Get data
         $user = $decoded->data;
+        try{
         $currentUser =(new test())->social_app->users;
         $user_id= $currentUser->findOne(['email' => $user->email]);
         
@@ -179,7 +186,6 @@ class FriendController extends Controller
         ]);
 
         
-        //  dd($requestsReceivedStatus==  true && $requestsSentStatus== true);
         if (isset($requestsReceived)) {
 
             if ($requestsReceivedStatus==  true && $requestsSentStatus== true) {
@@ -234,9 +240,14 @@ class FriendController extends Controller
             ]);
         } else {
             return response([
-                'message' => 'You are allraedy perform this action'
+                'message' => 'You are all raedy Request accepted'
             ]);
         }
+    }
+    catch (Throwable $ex) {
+        report($ex);
+        return false;
+    }
     }
 
 
@@ -252,10 +263,11 @@ class FriendController extends Controller
             ]);
         }
 
-        //Decode tonke
+        //Decode token
         $decoded = JWT::decode($token, new Key('Social', 'HS256'));
         //Get data
         $user = $decoded->data;
+        try{
         $currentUser =(new test())->social_app->users;
         $user_id= $currentUser->findOne(['email' => $user->email]);
         
@@ -267,7 +279,86 @@ class FriendController extends Controller
         $requestsSent= $currentUser->findOne([
             'sender.sender_id' => $id,
         ]);
-        dd($requestsSent);
+        if (isset($requestsReceived)) {
+            $saveFriendRequest = $currentUser->updateOne(['_id' => new \MongoDB\BSON\ObjectId($id)],
+            [
+                '$unset' => [
+                    'receiver'=>[
+                        'status' => false
+                    ]
+                    ]
+            ]);
+            $receiverFriendRequest = $currentUser->updateOne(['_id' => $user_id->_id],
+            [
+                '$unset' => [
+                    'receiver'=>[
+                        'status' => false
+                    ]
+                    ]
+            ]);
+           
+        }
+        if (isset($requestsSent)) {
+            $saveFriendRequest1 = $currentUser->updateOne(['_id' => new \MongoDB\BSON\ObjectId($id)],
+            [
+                '$unset' => [
+                    'sender'=>[
+                        'status' => false
+                ]
+                ]
+            ]);
+                $receiverFriendRequest1 = $currentUser->updateOne(['_id' => $user_id->_id],
+            [
+                '$unset' => [
+                    'sender'=>[
+                        'status' => false
+                ]
+                ]
+            ]);
+
+            return response([
+                'frind'=>'Request deleted',
+                'message' => 'You have unsent the request'
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'No request found'
+        ]);
+    }
+    catch (Throwable $ex) {
+        report($ex);
+        return false;
+    }
+    }
+
+    public function removeFriend(Request $request, $id)
+    {
+        // Bearer Token
+        $token = $request->bearerToken();
+
+        if (!isset($token)) {
+            return response([
+                'message' => 'Bearer token not found'
+            ]);
+        }
+
+        //Decode token
+        $decoded = JWT::decode($token, new Key('Social', 'HS256'));
+        //Get data
+        $user = $decoded->data;
+        try{
+        $currentUser =(new test())->social_app->users;
+        $user_id= $currentUser->findOne(['email' => $user->email]);
+        
+        $userExist= $currentUser->findOne(['_id' => $user_id->_id]);
+
+        $requestsReceived= $currentUser->findOne([
+            'receiver.receiver_id' => (string)$userExist['_id'],
+        ]);
+        $requestsSent= $currentUser->findOne([
+            'sender.sender_id' => $id,
+        ]);
         if (isset($requestsReceived)) {
             $saveFriendRequest = $currentUser->updateOne(['_id' => new \MongoDB\BSON\ObjectId($id)],
             [
@@ -286,13 +377,8 @@ class FriendController extends Controller
                     ]
             ]);
            
-
-            return response([
-                'message' => 'Request deleted'
-            ]);
         }
-
-        if (!isset($requestsSent)) {
+        if (isset($requestsSent)) {
             $saveFriendRequest1 = $currentUser->updateOne(['_id' => new \MongoDB\BSON\ObjectId($id)],
             [
                 '$unset' => [
@@ -311,14 +397,19 @@ class FriendController extends Controller
             ]);
 
             return response([
-                'message' => 'You have unsent the request'
+                'friend' => ' removed  from your list',
+                'message' => 'removed a friend'
             ]);
         }
 
+
         return response([
-            'message' => 'No such request exists'
+            'message' => 'No friend found'
         ]);
     }
-
-
+    catch (Throwable $ex) {
+        report($ex);
+        return false;
+    }
+    } 
 }
